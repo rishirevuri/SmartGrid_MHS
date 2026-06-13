@@ -1,0 +1,40 @@
+{
+  "current": {
+    "avg_temp": 51.77,
+    "max_temp": 56.0,
+    "avg_wind": 5.13,
+    "max_wind": 13.0,
+    "heat_risk_score": 0.025,
+    "wind_risk_score": 0.26,
+    "weather_risk_score": 0.119,
+    "anomaly_count": 0
+  },
+  "extreme_heat_days": [
+    {
+      "date": "2024-10-06",
+      "max_temp_f": 94.0
+    },
+    {
+      "date": "2024-10-01",
+      "max_temp_f": 92.0
+    },
+    {
+      "date": "2023-10-06",
+      "max_temp_f": 90.0
+    }
+  ],
+  "extreme_wind_days": [
+    {
+      "date": "2023-02-21",
+      "max_wind_mph": 45.0
+    },
+    {
+      "date": "2024-02-04",
+      "max_wind_mph": 43.0
+    },
+    {
+      "date": "2023-03-14",
+      "max_wind_mph": 38.0
+    }
+  ]
+}
