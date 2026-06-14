@@ -2,15 +2,54 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, RadioTower } from "lucide-react";
-import { DecisionLogEntry, GridEdge, GridNode, LiveSignals, RerouteSimulation, RiskSummary } from "@/lib/types";
+import { CascadeSimulation, DecisionLogEntry, GridEdge, GridNode, LiveSignals, RerouteSimulation, RiskSummary } from "@/lib/types";
 import { pct } from "@/lib/mapUtils";
 import StatusBadge from "./StatusBadge";
 import GridStatus from "./GridStatus";
-import LiveSignalsPanel from "./LiveSignals";
 import GridCopilot from "./GridCopilot";
 
 const DEFAULT_W = 496; // ~31rem
 const MIN_W = 300;
+
+// Reads a value from a nested path (e.g. "weather.avg_temp") or flat key.
+// Mirrors the lookup used by the Live Signals panel so the compact top-left
+// readout shows the same source values.
+function readSignal(signals: LiveSignals | undefined, ...paths: string[]): string {
+  if (!signals || Array.isArray(signals)) return "--";
+  for (const path of paths) {
+    let current: unknown = signals;
+    let ok = true;
+    for (const part of path.split(".")) {
+      if (typeof current !== "object" || current === null) { ok = false; break; }
+      current = (current as Record<string, unknown>)[part];
+    }
+    if (ok && current !== undefined && current !== null) return String(current);
+  }
+  return "--";
+}
+
+function CompactLiveSignals({ liveSignals }: { liveSignals?: LiveSignals }) {
+  const temp = readSignal(liveSignals, "weather.avg_temp", "temperature_f");
+  const wind = readSignal(liveSignals, "weather.avg_wind", "wind_speed_mph");
+  const caiso = readSignal(liveSignals, "caiso.np15_current_mw", "caiso_demand_mw");
+  const deviation = readSignal(liveSignals, "caiso.forecast_deviation_pct", "forecast_deviation_pct");
+  const items: Array<[string, string]> = [
+    ["Temp", `${temp}°F`],
+    ["Wind", `${wind} mph`],
+    ["CAISO", `${caiso} MW`],
+    ["Forecast Δ", `${deviation}%`]
+  ];
+  return (
+    <div className="mt-3 flex items-stretch justify-between gap-2 border-t border-white/[0.08] pt-3">
+      {items.map(([label, value]) => (
+        <div key={label} className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-[9px] uppercase tracking-[0.08em] text-zinc-500">{label}</span>
+          <span className="data-mono mt-0.5 truncate text-[13px] font-medium text-zinc-100">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function SelectedSubstation({ node }: { node?: GridNode }) {
   if (!node) return null;
@@ -43,31 +82,80 @@ function SelectedSubstation({ node }: { node?: GridNode }) {
   );
 }
 
-function SustainabilityImpact({ riskSummary }: { riskSummary?: RiskSummary }) {
-  const readiness = Number(riskSummary?.sustainable_grid_readiness || riskSummary?.grid_readiness_score || 82);
-  const cascadeReduction = Math.round(Number(riskSummary?.cascade_risk_reduction || 0.18) * 100);
-  const protectedSites = Number(riskSummary?.critical_sites_protected || 4);
-  const dieselMinutes = Number(riskSummary?.diesel_backup_avoided_minutes || 37);
+function SustainabilityImpact({
+  riskSummary,
+  nodes,
+  latestSimulation,
+  latestReroute
+}: {
+  riskSummary?: RiskSummary;
+  nodes: GridNode[];
+  latestSimulation?: CascadeSimulation;
+  latestReroute?: RerouteSimulation;
+}) {
+  const totalNodes = nodes.length || Number(riskSummary?.total_nodes || riskSummary?.total_substations || 29);
+  const totalCritical = nodes.filter((n) => n.critical_infrastructure).length || Number(riskSummary?.critical_sites_protected || 4);
+
+  // Cascade results — server returns cascade_path/affected_count; demo fallback uses affected_nodes.
+  const cascadePath = (Array.isArray(latestSimulation?.cascade_path) && latestSimulation!.cascade_path!.length
+    ? latestSimulation!.cascade_path!
+    : Array.isArray(latestSimulation?.affected_nodes)
+      ? latestSimulation!.affected_nodes!
+      : []).map(String);
+  const hasCascade = cascadePath.length > 0;
+  const affectedCount = Number(
+    (latestSimulation?.affected_count as number | undefined) ?? cascadePath.length
+  );
+
+  // Reroute results — top option score drives diesel + readiness deltas.
+  const rerouteScore = Number(latestReroute?.reroute_options?.[0]?.score ?? 0);
+  const hasReroute = Boolean(latestReroute?.reroute_options?.length);
+  const sustainabilityDiesel = Number(
+    (latestReroute as { sustainability?: { diesel_backup_avoided_minutes?: number } } | undefined)
+      ?.sustainability?.diesel_backup_avoided_minutes ?? 0
+  );
+
+  const baseReadiness = Number(riskSummary?.sustainable_grid_readiness || riskSummary?.grid_readiness_score || 82);
+
+  // CRITICAL SITES PROTECTED — critical-infra nodes that survived the cascade.
+  const protectedSites = hasCascade
+    ? nodes.filter((n) => n.critical_infrastructure && !cascadePath.includes(String(n._id))).length
+    : totalCritical;
+
+  // CASCADE RISK REDUCED — share of the grid that stayed up.
+  const cascadeReduction = hasCascade
+    ? Math.round(((totalNodes - affectedCount) / totalNodes) * 100)
+    : 0;
+
+  // DIESEL BACKUP AVOIDED — reroute_score * 60 proxy, with server sustainability as fallback.
+  const dieselMinutes = hasReroute ? (Math.round(rerouteScore * 60) || sustainabilityDiesel) : 0;
+
+  // GRID READINESS — recomputed once a simulation has run, capped 0–100.
+  const readiness = (hasCascade || hasReroute)
+    ? Math.max(0, Math.min(100, Math.round(baseReadiness - affectedCount * 2 + rerouteScore * 10)))
+    : Math.round(baseReadiness);
 
   return (
-    <section className="overlay-panel pointer-events-auto rounded-xl p-4">
-      <div className="panel-title">Sustainability Impact</div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-emerald-300/15 bg-emerald-300/[0.06] p-3">
-          <div className="text-[11px] text-zinc-300">Critical Sites Protected</div>
-          <div className="data-mono mt-1 text-lg font-medium text-emerald-200">{protectedSites}</div>
+    <section className="overlay-panel pointer-events-auto rounded-xl p-5">
+      <div className="text-[15px] font-bold uppercase tracking-[0.12em] text-white" style={{ textShadow: "0 0 18px rgba(255,255,255,0.18)" }}>
+        Sustainability Impact
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-emerald-300/20 bg-emerald-300/[0.07] p-4">
+          <div className="data-mono text-[34px] font-bold leading-none text-emerald-200">{protectedSites}</div>
+          <div className="mt-2 text-xs font-medium text-zinc-200">Critical Sites Protected</div>
         </div>
-        <div className="rounded-lg border border-sky-300/15 bg-sky-300/[0.06] p-3">
-          <div className="text-[11px] text-zinc-300">Grid Readiness</div>
-          <div className="data-mono mt-1 text-lg font-medium text-sky-200">{readiness}/100</div>
+        <div className="rounded-xl border border-sky-300/20 bg-sky-300/[0.07] p-4">
+          <div className="data-mono text-[34px] font-bold leading-none text-sky-200">{readiness}<span className="text-lg text-sky-200/70">/100</span></div>
+          <div className="mt-2 text-xs font-medium text-zinc-200">Grid Readiness</div>
         </div>
-        <div className="rounded-lg border border-teal-300/15 bg-teal-300/[0.06] p-3">
-          <div className="text-[11px] text-zinc-300">Cascade Risk Reduced</div>
-          <div className="data-mono mt-1 text-lg font-medium text-teal-200">{cascadeReduction}%</div>
+        <div className="rounded-xl border border-teal-300/20 bg-teal-300/[0.07] p-4">
+          <div className="data-mono text-[34px] font-bold leading-none text-teal-200">{cascadeReduction}%</div>
+          <div className="mt-2 text-xs font-medium text-zinc-200">Cascade Risk Reduced</div>
         </div>
-        <div className="rounded-lg border border-yellow-300/15 bg-yellow-300/[0.06] p-3">
-          <div className="text-[11px] text-zinc-300">Diesel Backup Avoided</div>
-          <div className="data-mono mt-1 text-lg font-medium text-yellow-100">{dieselMinutes} min</div>
+        <div className="rounded-xl border border-yellow-300/20 bg-yellow-300/[0.07] p-4">
+          <div className="data-mono text-[34px] font-bold leading-none text-yellow-100">{dieselMinutes}<span className="text-lg text-yellow-100/70"> min</span></div>
+          <div className="mt-2 text-xs font-medium text-zinc-200">Diesel Backup Avoided</div>
         </div>
       </div>
     </section>
@@ -177,6 +265,7 @@ export default function CommandPanel({
         {demoMode
           ? <div className="mt-3 rounded-lg border border-yellow-300/20 bg-yellow-300/10 px-3 py-2 text-xs text-yellow-200">Demo fallback mode</div>
           : <div className="mt-3 rounded-lg border border-teal-300/20 bg-teal-300/10 px-3 py-2 text-xs text-teal-200">Vercel API connected</div>}
+        <CompactLiveSignals liveSignals={liveSignals} />
       </section>
 
       {/* Collapse / expand toggle button */}
@@ -208,17 +297,14 @@ export default function CommandPanel({
           <div className="col-span-2">
             <GridCopilot nodes={nodes} selectedNode={selectedNode} riskSummary={riskSummary} liveSignals={liveSignals} latestReroute={latestReroute} />
           </div>
+          <div className="col-span-2">
+            <SustainabilityImpact riskSummary={riskSummary} nodes={nodes} latestSimulation={latestSimulation as CascadeSimulation | undefined} latestReroute={latestReroute} />
+          </div>
           <div className="col-span-2 md:col-span-1">
             <SelectedSubstation node={selectedNode} />
           </div>
           <div className="col-span-2 md:col-span-1">
             <GridStatus riskSummary={riskSummary} nodes={nodes} loading={loading} isScanning={isScanning} scanVersion={scanVersion} />
-          </div>
-          <div className="col-span-2">
-            <SustainabilityImpact riskSummary={riskSummary} />
-          </div>
-          <div className="col-span-2">
-            <LiveSignalsPanel liveSignals={liveSignals} loading={loading} isScanning={isScanning} scanVersion={scanVersion} />
           </div>
         </div>
       </div>

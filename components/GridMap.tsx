@@ -316,12 +316,12 @@ export default function GridMap({
       {!loaded ? <div className="absolute inset-0 z-30 animate-pulse bg-slate-100/80" /> : null}
       {mapError ? <div className="glass-chip absolute left-5 right-5 top-5 z-30 rounded-2xl px-4 py-3 text-sm text-red-700">{mapError}</div> : null}
       <div className="dark-chip absolute left-6 top-6 z-20 rounded-xl px-4 py-3">
-        <div className="text-sm font-medium tracking-tight text-zinc-100">SmartGrid Digital Twin</div>
-        <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">San Francisco Operating Region</div>
+        <div className="text-xl font-extrabold tracking-tight text-zinc-50">SmartGrid Digital Twin</div>
+        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-300">San Francisco Operating Region</div>
       </div>
-      <div className="absolute left-6 top-[5.8rem] z-20 flex items-center gap-2">
-        {demoMode ? <span className="dark-chip rounded-full px-3 py-1.5 text-[11px] font-medium text-yellow-200">Demo fallback</span> : null}
-        <span className="dark-chip rounded-full px-3 py-1.5 text-[11px] font-medium text-zinc-300"><span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-teal-300" />Live</span>
+      <div className="absolute left-6 top-[6.6rem] z-20 flex items-center gap-2">
+        {demoMode ? <span className="dark-chip rounded-full px-3.5 py-2 text-xs font-medium text-yellow-200">Demo fallback</span> : null}
+        <span className="dark-chip rounded-full px-3.5 py-2 text-xs font-medium text-zinc-200"><span className="mr-2 inline-block h-2 w-2 rounded-full bg-teal-300" />Live</span>
       </div>
       <MapControls onReset={() => mapRef.current?.flyTo(INITIAL_VIEW)} layers={layers} setLayers={setLayers} />
       <MapLegend />

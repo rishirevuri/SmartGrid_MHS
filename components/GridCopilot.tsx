@@ -341,7 +341,7 @@ export default function GridCopilot({
   ];
 
   return (
-    <section className="overlay-panel flex min-h-[30rem] flex-col rounded-xl p-4">
+    <section className="overlay-panel flex min-h-[34rem] flex-col rounded-xl p-4">
       <div className="mb-3 flex items-center gap-2">
         <Bot className="h-3.5 w-3.5 text-teal-300" />
         <h2 className="panel-title">Grid Intelligence</h2>
@@ -370,7 +370,7 @@ export default function GridCopilot({
             key={q}
             type="button"
             onClick={() => sendMessage(q)}
-            className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[10px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-zinc-100"
+            className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-zinc-100"
           >
             {q}
           </button>
@@ -380,13 +380,13 @@ export default function GridCopilot({
       {/* Messages — height toggles with expand state */}
       <div
         className={`soft-scrollbar space-y-2 overflow-y-auto pr-1 transition-[max-height] duration-300 ease-out ${
-          expanded ? "max-h-[34rem]" : "max-h-72"
+          expanded ? "max-h-[42rem]" : "max-h-96"
         }`}
       >
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[92%] rounded-xl px-3 py-2 text-[11px] leading-relaxed ${
+              className={`max-w-[92%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
                 msg.role === "user" ? "bg-sky-900/40 text-sky-100" : "bg-white/[0.04] text-zinc-200"
               }`}
             >
@@ -430,9 +430,9 @@ export default function GridCopilot({
               key={label}
               type="button"
               onClick={() => sendMessage(q)}
-              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[10px] font-medium transition hover:opacity-80 ${color}`}
+              className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-xs font-medium transition hover:opacity-80 ${color}`}
             >
-              <Icon className="h-3 w-3 flex-shrink-0" />
+              <Icon className="h-3.5 w-3.5 flex-shrink-0" />
               {label}
             </button>
           ))}
@@ -446,14 +446,14 @@ export default function GridCopilot({
           onChange={e => setInput(e.target.value)}
           placeholder="Ask anything — e.g. what does the red line mean?"
           disabled={isThinking}
-          className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 outline-none focus:border-white/20 disabled:opacity-60"
+          className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none focus:border-white/20 disabled:opacity-60"
         />
         <button
           type="submit"
           disabled={!input.trim() || isThinking}
-          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] disabled:opacity-40"
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] disabled:opacity-40"
         >
-          <Send className="h-3 w-3" />
+          <Send className="h-3.5 w-3.5" />
         </button>
       </form>
     </section>
