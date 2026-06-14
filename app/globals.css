@@ -24,16 +24,27 @@
 
 html,
 body {
+  height: 100%;
+  width: 100%;
   min-height: 100%;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
 }
 
 body {
-  overflow-x: hidden;
   font-family: var(--font-display), sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "tnum";
+}
+
+#app-root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .app-texture {
